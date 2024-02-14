@@ -1,67 +1,109 @@
-// using System.Collections;
-// using System.Collections.Generic;
-// using UnityEngine;
-
-// namespace Editor.OBB
-// {
-//     public class BoundUtility
-//     {
-        // private static Vector3[] LocalToWorld(Vector3[] position, Transform transform)
-        // {
-//            for (int i = 0; i < position.Length; i++)
-//            {
-//                position[i] = transform.TransformPoint(position[i]);
-//            }
-//             return position;
-//         }
-//
-//         
-//     }
-// }
-
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
-using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.UIElements;
+
+namespace CommonTools.Bounding
+{
+    public class BoundUtility
+    {
+        public static PositionData GetGameObjectVertex(GameObject gameObject) => FetchVertexPositionFromGameObject(gameObject);
+        
+        public struct PositionData
+        {
+            public Vector3[] Position;
+            public float[] PositionX;
+            public float[] PositionY;
+            public float[] PositionZ;
+        }
+        
+        // SkinnedMeshRenderer Is Invalid
+        private static PositionData FetchVertexPositionFromGameObject(GameObject o)
+        {
+            List<Vector3> vertices = new List<Vector3>();
+            MeshFilter[] meshFilters = o.GetComponentsInChildren<MeshFilter>();
+            
+            foreach (var meshFilter in meshFilters)
+            {
+                Vector3[] vertexPositions = meshFilter.sharedMesh.vertices;
+                Transform transform = meshFilter.transform;
+                vertexPositions = TransformToWorldSpace(vertexPositions, transform);
+                vertices.AddRange(vertexPositions);
+            }
+            // Fill PositionData
+            List<float> positionX = new List<float>();
+            List<float> positionY = new List<float>();
+            List<float> positionZ = new List<float>();
+            for (int i = 0; i < vertices.Count; i++)
+            {
+                positionX.Add(vertices[i].x);
+                positionY.Add(vertices[i].y);
+                positionZ.Add(vertices[i].z);
+            }
+            PositionData data = new PositionData
+            {
+                Position = vertices.ToArray(),
+                PositionX = positionX.ToArray(),
+                PositionY = positionY.ToArray(),
+                PositionZ = positionZ.ToArray()
+            };
+            return data;
+        }
+        
+        private static Vector3[] TransformToWorldSpace(Vector3[] positions, Transform transform)
+        {
+            for (int i = 0; i < positions.Length; i++)
+            {
+                positions[i] = transform.TransformPoint(positions[i]);
+            }
+            return positions;
+        }
+        // Matrix Calculate
+        public static Matrix4x4 MatrixAddFloat(Matrix4x4 m, Matrix4x4 n)
+        {
+            Matrix4x4 result = new Matrix4x4();
+            for (int i = 0; i < 4; i++)
+            {
+                for (int j = 0; j < 4; j++)
+                {
+                    result[i, j] = m[i, j] + n[i, j];
+                }
+            }
+            return result;
+        }
+        
+        public static Matrix4x4 OuterProduct(Vector4 u, Vector4 v)
+        {
+            Vector4 r0 = new Vector4(u.x * v.x, u.x * v.y, u.x * v.z, u.x * v.w);
+            Vector4 r1 = new Vector4(u.y * v.x, u.y * v.y, u.y * v.z, u.y * v.w);
+            Vector4 r2 = new Vector4(u.z * v.x, u.z * v.y, u.z * v.z, u.z * v.w);
+            Vector4 r3 = new Vector4(u.w * v.x, u.w * v.y, u.w * v.z, u.w * v.w);
+            return new Matrix4x4(r0, r1, r2, r3);
+        }
+        
+        public static Matrix4x4 MatrixDivideFloat(Matrix4x4 m, float n)
+        {
+            Matrix4x4 result = new Matrix4x4();
+            for (int i = 0; i < 4; i++)
+            {
+                for (int j = 0; j < 4; j++)
+                {
+                    result[i, j] = m[i, j] / n;
+                }
+            }
+            return result;
+        }
+    }
+}
+
+
 
 namespace XPCG.Tools
 {
     
     public class CommonBoundBox
     {
-        /// <summary>
-        /// 0 - 7 => Eight Corner, 8 => Center, 9 => Bottom Center, 10 => Size
-        /// </summary>
-        public static Vector3[] ComputeAABB(GameObject g)
-        {
-            float[] pointsPositionX = new float[1];
-            float[] pointsPositionY = new float[1];
-            float[] pointsPositionZ = new float[1];
-            Vector3[] vertices = GetPoints(g, ref pointsPositionX, ref pointsPositionY, ref pointsPositionZ);
-            if(vertices.Length < 2) { return new Vector3[9]; }
-            Vector3 min = new Vector3(pointsPositionX.Min(), pointsPositionY.Min(), pointsPositionZ.Min());
-            Vector3 max = new Vector3(pointsPositionX.Max(), pointsPositionY.Max(), pointsPositionZ.Max());
-        
-            Vector3[] corner = new Vector3[11];
-
-            corner[0] = new Vector3(min.x, min.y, min.z);
-            corner[1] = new Vector3(min.x, min.y, max.z);
-            corner[2] = new Vector3(max.x, min.y, max.z);
-            corner[3] = new Vector3(max.x, min.y, min.z);
-            corner[4] = new Vector3(min.x, max.y, min.z);
-            corner[5] = new Vector3(min.x, max.y, max.z);
-            corner[6] = new Vector3(max.x, max.y, max.z);
-            corner[7] = new Vector3(max.x, max.y, min.z);
-            Vector3 center = (corner[0] + corner[1] + corner[2] + corner[3] + corner[4] + corner[5] + corner[6] + corner[7]) / 8;
-            corner[8] = center;
-            corner[9] = new Vector3(center.x, min.y, center.z);
-            corner[10] = new Vector3(Mathf.Abs(max.x - min.x), Mathf.Abs(max.y - min.y), Mathf.Abs(max.z - min.z));
-            return corner;
-        }
-        
         private struct Position
         {
             public Vector3 Pos;

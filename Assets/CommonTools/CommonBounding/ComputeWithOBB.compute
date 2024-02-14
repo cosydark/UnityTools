@@ -1,0 +1,149 @@
+﻿#pragma kernel ComputeSVD3D
+
+#include "SVD.hlsl"
+
+struct Output
+{
+	float4 P0;
+	float4 P1;
+	float4 P2;
+	float4 P3;
+	float4 P4;
+	float4 P5;
+	float4 P6;
+	float4 P7;
+};
+struct Position
+{
+	float3 Pos;
+};
+
+int _PointCount;
+float3 _Center;
+float4 _COV0, _COV1, _COV2, _COV3;
+
+StructuredBuffer<Position> _position_buffer;
+RWStructuredBuffer<Output> _output_buffer;
+//
+float4 LookAt(float3 forward, float3 up)
+{
+	float3 right = normalize(cross(forward, up));
+	up = normalize(cross(forward, right));
+
+	float m00 = right.x;
+	float m01 = right.y;
+	float m02 = right.z;
+	float m10 = up.x;
+	float m11 = up.y;
+	float m12 = up.z;
+	float m20 = forward.x;
+	float m21 = forward.y;
+	float m22 = forward.z;
+
+	float num8 = (m00 + m11) + m22;
+	float4 q = float4(0, 0, 0, 1);
+	if (num8 > 0.0)
+	{
+		float num = sqrt(num8 + 1.0);
+		q.w = num * 0.5;
+		num = 0.5 / num;
+		q.x = (m12 - m21) * num;
+		q.y = (m20 - m02) * num;
+		q.z = (m01 - m10) * num;
+		return q;
+	}
+
+	if ((m00 >= m11) && (m00 >= m22))
+	{
+		float num7 = sqrt(((1.0 + m00) - m11) - m22);
+		float num4 = 0.5 / num7;
+		q.x = 0.5 * num7;
+		q.y = (m01 + m10) * num4;
+		q.z = (m02 + m20) * num4;
+		q.w = (m12 - m21) * num4;
+		return q;
+	}
+
+	if (m11 > m22)
+	{
+		float num6 = sqrt(((1.0 + m11) - m00) - m22);
+		float num3 = 0.5 / num6;
+		q.x = (m10 + m01) * num3;
+		q.y = 0.5 * num6;
+		q.z = (m21 + m12) * num3;
+		q.w = (m20 - m02) * num3;
+		return q;
+	}
+
+	float num5 = sqrt(((1.0 + m22) - m00) - m11);
+	float num2 = 0.5 / num5;
+	q.x = (m20 + m02) * num2;
+	q.y = (m21 + m12) * num2;
+	q.z = 0.5 * num5;
+	q.w = (m01 - m10) * num2;
+	return q;
+}
+float3x3 CalculateTRS(float4 Quaternion)
+{
+	float x = Quaternion.x;float y = Quaternion.y;
+	float z = Quaternion.z; float w = Quaternion.w;
+	float3x3 TransformMatrix = float3x3(
+										float3((1 - 2 * (y * y + z * z)), 2 * (x * y - z * w)      , 2 * (x * z + y * w)),
+										float3(2 * (x * y + z * w)      , (1 - 2 * (x * x + z * z)), 2 * (y * z - x * w)),
+										float3(2 * (x * z - y * w)		, 2 * (y * z + x * w)	   , 1 - 2 * (x * x + y * y))
+										);
+	return TransformMatrix;
+}
+//
+[numthreads(1, 1, 1)]
+void ComputeSVD3D(uint3 Id : SV_DispatchThreadID)
+{
+	float3x3 A = float3x3(_COV0.xyz, _COV1.xyz, _COV2.xyz);
+	float3x3 U;
+	float3	 D;
+	float3x3 V;
+
+	GetSVD3D(A, U, D, V);
+
+	U = transpose(U);
+	float3 VectorU[3];
+	VectorU[0] = U[0];	VectorU[1] = U[1];	VectorU[2] = U[2];
+	
+	float3x3 Mat = CalculateTRS(LookAt(VectorU[1], VectorU[2]));
+	
+	float3x3 InverseMat = transpose(Mat);
+	
+	float3 Min = float3(1.0e38, 1.0e38, 1.0e38);
+	float3 Max = float3(-1.0e38, -1.0e38, -1.0e38);
+
+	for(int n = 0; n < _PointCount; n++)
+	{
+		float3 p = _position_buffer[n].Pos - _Center;
+		float3 RotP = mul(InverseMat, p);
+		Min = min(RotP, Min);
+		Max = max(RotP, Max);
+	}
+	float3 P[8];
+	P[0] = float3(Min.x, Min.y, Min.z);
+	P[1] = float3(Min.x, Min.y, Max.z);
+	P[2] = float3(Max.x, Min.y, Max.z);
+	P[3] = float3(Max.x, Min.y, Min.z);
+	P[4] = float3(Min.x, Max.y, Min.z);
+	P[5] = float3(Min.x, Max.y, Max.z);
+	P[6] = float3(Max.x, Max.y, Max.z);
+	P[7] = float3(Max.x, Max.y, Min.z);
+
+	for(int m = 0; m < 8; m++)
+	{
+		P[m] = _Center + mul(Mat, P[m]);
+	}
+	_output_buffer[Id.x].P0 = float4(P[2], 0);
+	_output_buffer[Id.x].P1 = float4(P[6], 0);
+	_output_buffer[Id.x].P2 = float4(P[7], 0);
+	_output_buffer[Id.x].P3 = float4(P[3], 0);
+	_output_buffer[Id.x].P4 = float4(P[1], 0);
+	_output_buffer[Id.x].P5 = float4(P[5], 0);
+	_output_buffer[Id.x].P6 = float4(P[4], 0);
+	_output_buffer[Id.x].P7 = float4(P[0], 0);
+	
+}
