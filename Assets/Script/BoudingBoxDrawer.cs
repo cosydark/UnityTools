@@ -21,6 +21,7 @@ public class BoudingBoxDrawer : MonoBehaviour
         Line,
         Point
     }
+    
     [Button("Set Up AABB Lines", ButtonSizes.Medium)]
     private void SetupAABBLines()
     {
@@ -44,6 +45,7 @@ public class BoudingBoxDrawer : MonoBehaviour
         startPos.Add(box[2]); endPos.Add(box[6]);
         startPos.Add(box[3]); endPos.Add(box[7]);
     }
+    
     [Button("Set Up AABB ArtBlock", ButtonSizes.Medium)]
     private void SetupAABBArtBlock()
     {
@@ -56,18 +58,31 @@ public class BoudingBoxDrawer : MonoBehaviour
         artBlock.transform.rotation = trs.GetR();
         artBlock.transform.localScale = trs.GetS();
     }
+    
    [Button("Set Up Convex Hull Lines", ButtonSizes.Medium)]
    private void SetupConvexHullLines()
    {
-       point = new List<Vector3>();
-       var data = CommonTools.Bounding.BoundUtility.GetGameObjectVertex(this.gameObject);
-       Vector3[] hull = ConvexHullFunctions.ConvexHull.GenerateCorners(data.Position);
-       for (int i = 0; i < hull.Length; i++)
-       {
-           point.Add(hull[i]);
-       }
-       Debug.Log(hull.Length);
+       startPos = new List<Vector3>();
+       endPos = new List<Vector3>();
+        
+       Vector3[] box = CommonTools.Bounding.OrientedBoundingBox.ComputeOBB(this.gameObject);
+       // Z
+       startPos.Add(box[0]); endPos.Add(box[1]);
+       startPos.Add(box[2]); endPos.Add(box[3]);
+       startPos.Add(box[4]); endPos.Add(box[5]);
+       startPos.Add(box[6]); endPos.Add(box[7]);
+       // X
+       startPos.Add(box[0]); endPos.Add(box[3]);
+       startPos.Add(box[1]); endPos.Add(box[2]);
+       startPos.Add(box[4]); endPos.Add(box[7]);
+       startPos.Add(box[5]); endPos.Add(box[6]);
+       // Y
+       startPos.Add(box[0]); endPos.Add(box[4]);
+       startPos.Add(box[1]); endPos.Add(box[5]);
+       startPos.Add(box[2]); endPos.Add(box[6]);
+       startPos.Add(box[3]); endPos.Add(box[7]);
    }
+   
     private void Update()
     {
         if (Type == DrawType.Line)

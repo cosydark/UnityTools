@@ -5,12 +5,13 @@ using UnityEngine;
 
 namespace CommonTools.Bounding
 {
-    public class AxisAlignedBoundingBox
+    public abstract class AxisAlignedBoundingBox
     {
         // Public Functions
         public static Matrix4x4 GetAxisAlignedArtBlock(GameObject gameObject) => ComputeGameObjectAABB_ArtBlock(gameObject);
         public static Vector3[] GetAxisAlignedBoundingBox(GameObject gameObject) => ComputeGameObjectAABB_Box(gameObject);
         public static Vector3 GetAxisAlignedBoundingCenter(GameObject gameObject) => ComputeGameObjectAABB_Center(gameObject);
+        public static Vector3 GetAxisAlignedBoundingCenter(BoundUtility.PositionData data) => ComputeGameObjectAABB_Center(data);
         public static Vector3 GetAxisAlignedBoundingCenterBot(GameObject gameObject) => ComputeGameObjectAABB_CenterBot(gameObject);
         public static Vector3 GetAxisAlignedBoundingSize(GameObject gameObject) => ComputeGameObjectAABB_Size(gameObject);
         public static Vector3[] GetAxisAlignedBoundingCorners(GameObject gameObject) => ComputeGameObjectAABB_Corners(gameObject);
@@ -20,7 +21,7 @@ namespace CommonTools.Bounding
         
         private static Matrix4x4 ComputeGameObjectAABB_ArtBlock(GameObject o)
         {
-            var data = BoundUtility.GetGameObjectVertex(o);
+            var data = BoundUtility.GetGameObjectConvexHull(o);
             Vector3[] corners = ComputeAABB(data);
             Vector3 center = corners[8];
             Vector3 size = corners[10];
@@ -31,14 +32,14 @@ namespace CommonTools.Bounding
         //      ________________
         //     |                |
         //     |                |
-        //     |    Top View    |
+        //     |    Top View    |     Right Direction
         //     |                |
         //     |                |
         //      ________________
         //     (0, 4)           (3, 7)
         private static Vector3[] ComputeGameObjectAABB_Box(GameObject o)
         {
-            var data = BoundUtility.GetGameObjectVertex(o);
+            var data = BoundUtility.GetGameObjectConvexHull(o);
             Vector3[] corners = ComputeAABB(data);
             List<Vector3> box = new List<Vector3>();
             for (int i = 0; i < 8; i++)
@@ -50,25 +51,30 @@ namespace CommonTools.Bounding
 
         private static Vector3 ComputeGameObjectAABB_Center(GameObject o)
         {
-            var data = BoundUtility.GetGameObjectVertex(o);
+            var data = BoundUtility.GetGameObjectConvexHull(o);
+            return ComputeAABB(data)[8];
+        }
+        
+        private static Vector3 ComputeGameObjectAABB_Center(BoundUtility.PositionData data)
+        {
             return ComputeAABB(data)[8];
         }
         
         private static Vector3 ComputeGameObjectAABB_CenterBot(GameObject o)
         {
-            var data = BoundUtility.GetGameObjectVertex(o);
+            var data = BoundUtility.GetGameObjectConvexHull(o);
             return ComputeAABB(data)[9];
         }
         
         private static Vector3 ComputeGameObjectAABB_Size(GameObject o)
         {
-            var data = BoundUtility.GetGameObjectVertex(o);
+            var data = BoundUtility.GetGameObjectConvexHull(o);
             return ComputeAABB(data)[10];
         }
         
         private static Vector3[] ComputeGameObjectAABB_Corners(GameObject o)
         {
-            var data = BoundUtility.GetGameObjectVertex(o);
+            var data = BoundUtility.GetGameObjectConvexHull(o);
             return ComputeAABB(data);
         }
         /// <summary>

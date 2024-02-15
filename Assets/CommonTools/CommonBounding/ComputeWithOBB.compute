@@ -1,6 +1,6 @@
 ﻿#pragma kernel ComputeSVD3D
 
-#include "SVD.hlsl"
+#include "Assets/CommonTools/CommonBounding/SVD.hlsl"
 
 struct Output
 {
