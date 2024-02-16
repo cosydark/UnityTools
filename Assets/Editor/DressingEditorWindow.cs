@@ -9,7 +9,7 @@ namespace ArtBlockTool
     [ExecuteInEditMode]
     public class ArtBlockToolWindow : EditorWindow
     {
-        [MenuItem("TA/ArtBlockTool")]
+        [MenuItem("TA/Art Block Tool")]
         public static void OpenWindow()
         {
             var window = ScriptableObject.CreateInstance<ArtBlockToolWindow>() as ArtBlockToolWindow;
