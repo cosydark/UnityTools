@@ -1,6 +1,4 @@
-using System.Collections.Generic;
 using System.Linq;
-using Unity.Mathematics;
 using UnityEngine;
 
 namespace CommonTools.Bounding
@@ -8,24 +6,30 @@ namespace CommonTools.Bounding
     public abstract class AxisAlignedBoundingBox
     {
         // Public Functions
-        public static Matrix4x4 GetAxisAlignedArtBlock(GameObject gameObject) => ComputeGameObjectAABB_ArtBlock(gameObject);
+        public static Matrix4x4 GetAxisAlignedBoundingBoxTrsMatrix(GameObject gameObject) => ComputeGameObjectAABB_TRSMatrix(gameObject);
+        public static Matrix4x4 GetAxisAlignedBoundingBoxTrsMatrix(BoundUtility.PositionData data) => ComputeGameObjectAABB_TRSMatrix(data);
         public static Vector3[] GetAxisAlignedBoundingBox(GameObject gameObject) => ComputeGameObjectAABB_Box(gameObject);
-        public static Vector3 GetAxisAlignedBoundingCenter(GameObject gameObject) => ComputeGameObjectAABB_Center(gameObject);
-        public static Vector3 GetAxisAlignedBoundingCenter(BoundUtility.PositionData data) => ComputeGameObjectAABB_Center(data);
         public static Vector3 GetAxisAlignedBoundingCenterBot(GameObject gameObject) => ComputeGameObjectAABB_CenterBot(gameObject);
-        public static Vector3 GetAxisAlignedBoundingSize(GameObject gameObject) => ComputeGameObjectAABB_Size(gameObject);
         public static Vector3[] GetAxisAlignedBoundingCorners(GameObject gameObject) => ComputeGameObjectAABB_Corners(gameObject);
         public static Vector3[] GetAxisAlignedBoundingCorners(BoundUtility.PositionData data) => ComputeAABB(data);
         
         #region PrivateFunctions
         
-        private static Matrix4x4 ComputeGameObjectAABB_ArtBlock(GameObject o)
+        private static Matrix4x4 ComputeGameObjectAABB_TRSMatrix(GameObject o)
         {
             var data = BoundUtility.GetGameObjectConvexHull(o);
             Vector3[] corners = ComputeAABB(data);
             Vector3 center = corners[8];
             Vector3 size = corners[10];
-            return Matrix4x4.TRS(center, quaternion.identity, size);
+            return Matrix4x4.TRS(center, Quaternion.identity, size);
+        }
+        
+        private static Matrix4x4 ComputeGameObjectAABB_TRSMatrix(BoundUtility.PositionData data)
+        {
+            Vector3[] corners = ComputeAABB(data);
+            Vector3 center = corners[8];
+            Vector3 size = corners[10];
+            return Matrix4x4.TRS(center, Quaternion.identity, size);
         }
         //     Forward Direction
         //     (1, 5)           (2, 6)
@@ -40,38 +44,15 @@ namespace CommonTools.Bounding
         private static Vector3[] ComputeGameObjectAABB_Box(GameObject o)
         {
             var data = BoundUtility.GetGameObjectConvexHull(o);
-            Vector3[] corners = ComputeAABB(data);
-            List<Vector3> box = new List<Vector3>();
-            for (int i = 0; i < 8; i++)
-            {
-                box.Add(corners[i]);
-            }
-            return box.ToArray();
+            return ComputeAABB(data).Take(8).ToArray();
         }
 
-        private static Vector3 ComputeGameObjectAABB_Center(GameObject o)
-        {
-            var data = BoundUtility.GetGameObjectConvexHull(o);
-            return ComputeAABB(data)[8];
-        }
-        
-        private static Vector3 ComputeGameObjectAABB_Center(BoundUtility.PositionData data)
-        {
-            return ComputeAABB(data)[8];
-        }
-        
         private static Vector3 ComputeGameObjectAABB_CenterBot(GameObject o)
         {
             var data = BoundUtility.GetGameObjectConvexHull(o);
             return ComputeAABB(data)[9];
         }
-        
-        private static Vector3 ComputeGameObjectAABB_Size(GameObject o)
-        {
-            var data = BoundUtility.GetGameObjectConvexHull(o);
-            return ComputeAABB(data)[10];
-        }
-        
+
         private static Vector3[] ComputeGameObjectAABB_Corners(GameObject o)
         {
             var data = BoundUtility.GetGameObjectConvexHull(o);

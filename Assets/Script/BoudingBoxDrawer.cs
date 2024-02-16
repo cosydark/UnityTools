@@ -51,7 +51,7 @@ public class BoudingBoxDrawer : MonoBehaviour
     {
         GameObject artBlock = GameObject.CreatePrimitive(PrimitiveType.Cube);
         artBlock.name = $"{this.gameObject.name} AABB";
-        Matrix4x4 trs = CommonTools.Bounding.AxisAlignedBoundingBox.GetAxisAlignedArtBlock(this.gameObject);
+        Matrix4x4 trs = CommonTools.Bounding.AxisAlignedBoundingBox.GetAxisAlignedBoundingBoxTrsMatrix(this.gameObject);
         // Set Transform
         if (!trs.ValidTRS()) { return; }
         artBlock.transform.position = trs.GetT();
@@ -59,13 +59,13 @@ public class BoudingBoxDrawer : MonoBehaviour
         artBlock.transform.localScale = trs.GetS();
     }
     
-   [Button("Set Up Convex Hull Lines", ButtonSizes.Medium)]
-   private void SetupConvexHullLines()
+   [Button("Set Up OBB Lines", ButtonSizes.Medium)]
+   private void SetupOBBLines()
    {
        startPos = new List<Vector3>();
        endPos = new List<Vector3>();
         
-       Vector3[] box = CommonTools.Bounding.OrientedBoundingBox.ComputeOBB(this.gameObject);
+       Vector3[] box = CommonTools.Bounding.OrientedBoundingBox.GetOrientedBoundingBox(this.gameObject);
        // Z
        startPos.Add(box[0]); endPos.Add(box[1]);
        startPos.Add(box[2]); endPos.Add(box[3]);
@@ -83,6 +83,18 @@ public class BoudingBoxDrawer : MonoBehaviour
        startPos.Add(box[3]); endPos.Add(box[7]);
    }
    
+   [Button("Set Up OBB ArtBlock", ButtonSizes.Medium)]
+   private void SetupOBBArtBlock()
+   {
+       GameObject artBlock = GameObject.CreatePrimitive(PrimitiveType.Cube);
+       artBlock.name = $"{this.gameObject.name} OBB";
+       Matrix4x4 trs = CommonTools.Bounding.OrientedBoundingBox.GetOrientedBoundingBoxTrsMatrix(this.gameObject);
+       // Set Transform
+       if (!trs.ValidTRS()) { return; }
+       artBlock.transform.position = trs.GetT();
+       artBlock.transform.rotation = trs.GetR();
+       artBlock.transform.localScale = trs.GetS();
+   }
     private void Update()
     {
         if (Type == DrawType.Line)

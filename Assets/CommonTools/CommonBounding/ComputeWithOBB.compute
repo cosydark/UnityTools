@@ -2,7 +2,7 @@
 
 #include "Assets/CommonTools/CommonBounding/SVD.hlsl"
 
-struct Output
+struct BoundingBoxBuffer
 {
 	float4 P0;
 	float4 P1;
@@ -13,18 +13,17 @@ struct Output
 	float4 P6;
 	float4 P7;
 };
-struct Position
+struct PositionBuffer
 {
-	float3 Pos;
+	float3 VertexPosition;
 };
 
 int _PointCount;
 float3 _Center;
 float4 _COV0, _COV1, _COV2, _COV3;
-
-StructuredBuffer<Position> _position_buffer;
-RWStructuredBuffer<Output> _output_buffer;
-//
+StructuredBuffer<PositionBuffer> _PositionBuffer;
+RWStructuredBuffer<BoundingBoxBuffer> _BoundingBoxBuffer;
+// Matrix Math
 float4 LookAt(float3 forward, float3 up)
 {
 	float3 right = normalize(cross(forward, up));
@@ -83,7 +82,7 @@ float4 LookAt(float3 forward, float3 up)
 	q.w = (m01 - m10) * num2;
 	return q;
 }
-float3x3 CalculateTRS(float4 Quaternion)
+float3x3 CalculateTrs(float4 Quaternion)
 {
 	float x = Quaternion.x;float y = Quaternion.y;
 	float z = Quaternion.z; float w = Quaternion.w;
@@ -94,7 +93,7 @@ float3x3 CalculateTRS(float4 Quaternion)
 										);
 	return TransformMatrix;
 }
-//
+
 [numthreads(1, 1, 1)]
 void ComputeSVD3D(uint3 Id : SV_DispatchThreadID)
 {
@@ -109,7 +108,7 @@ void ComputeSVD3D(uint3 Id : SV_DispatchThreadID)
 	float3 VectorU[3];
 	VectorU[0] = U[0];	VectorU[1] = U[1];	VectorU[2] = U[2];
 	
-	float3x3 Mat = CalculateTRS(LookAt(VectorU[1], VectorU[2]));
+	float3x3 Mat = CalculateTrs(LookAt(VectorU[1], VectorU[2]));
 	
 	float3x3 InverseMat = transpose(Mat);
 	
@@ -118,7 +117,7 @@ void ComputeSVD3D(uint3 Id : SV_DispatchThreadID)
 
 	for(int n = 0; n < _PointCount; n++)
 	{
-		float3 p = _position_buffer[n].Pos - _Center;
+		float3 p = _PositionBuffer[n].VertexPosition - _Center;
 		float3 RotP = mul(InverseMat, p);
 		Min = min(RotP, Min);
 		Max = max(RotP, Max);
@@ -137,13 +136,13 @@ void ComputeSVD3D(uint3 Id : SV_DispatchThreadID)
 	{
 		P[m] = _Center + mul(Mat, P[m]);
 	}
-	_output_buffer[Id.x].P0 = float4(P[2], 0);
-	_output_buffer[Id.x].P1 = float4(P[6], 0);
-	_output_buffer[Id.x].P2 = float4(P[7], 0);
-	_output_buffer[Id.x].P3 = float4(P[3], 0);
-	_output_buffer[Id.x].P4 = float4(P[1], 0);
-	_output_buffer[Id.x].P5 = float4(P[5], 0);
-	_output_buffer[Id.x].P6 = float4(P[4], 0);
-	_output_buffer[Id.x].P7 = float4(P[0], 0);
+	_BoundingBoxBuffer[Id.x].P0 = float4(P[2], 0);
+	_BoundingBoxBuffer[Id.x].P1 = float4(P[6], 0);
+	_BoundingBoxBuffer[Id.x].P2 = float4(P[7], 0);
+	_BoundingBoxBuffer[Id.x].P3 = float4(P[3], 0);
+	_BoundingBoxBuffer[Id.x].P4 = float4(P[1], 0);
+	_BoundingBoxBuffer[Id.x].P5 = float4(P[5], 0);
+	_BoundingBoxBuffer[Id.x].P6 = float4(P[4], 0);
+	_BoundingBoxBuffer[Id.x].P7 = float4(P[0], 0);
 	
 }

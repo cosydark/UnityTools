@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Runtime.InteropServices;
 using UnityEditor;
 using UnityEngine;
@@ -7,13 +8,44 @@ namespace CommonTools.Bounding
 {
     public class OrientedBoundingBox
     {
+        public static Vector3[] GetOrientedBoundingBox(GameObject o) => ComputeGameObjectOBB_Box(o);
+        public static Matrix4x4 GetOrientedBoundingBoxTrsMatrix(GameObject gameObject) => ComputeGameObjectOBB_TrsMatrix(gameObject);
+        
         #region PrivateFunctions
-        public static Vector3[] ComputeOBB(GameObject o)
+
+        private static Vector3[] ComputeGameObjectOBB_Box(GameObject o)
+        {
+            var data = BoundUtility.GetGameObjectConvexHull(o);
+            return ComputeOBB(data).Take(8).ToArray();
+        }
+        //     Forward Direction (bot, top)
+        //     (2, 3)           (1, 0)
+        //      ________________
+        //     |                |
+        //     |                |
+        //     |    Top View    |     Right Direction
+        //     |                |
+        //     |                |
+        //      ________________
+        //     (6, 7)           (5, 4)
+        private static Matrix4x4 ComputeGameObjectOBB_TrsMatrix(GameObject o)
+        {
+            var data = BoundUtility.GetGameObjectConvexHull(o);
+            var box = ComputeOBB(data);
+            // Size Came From Alchemical
+            Vector3 size = new Vector3(Vector3.Distance(box[0], box[3]), Vector3.Distance(box[0], box[1]),
+                Vector3.Distance(box[0], box[4]));
+            Vector3 up = (box[0] - box[1]).normalized;
+            Vector3 forward = (box[0] - box[4]).normalized;
+            Quaternion rotation = Quaternion.LookRotation(forward, up);
+            Vector3 center = box[8];
+            return Matrix4x4.TRS(center, rotation, size);
+        }
+        private static Vector3[] ComputeOBB(BoundUtility.PositionData data)
         {
             // Prepare Data
             // Compute Convex Hull
-            BoundUtility.PositionData data = BoundUtility.GetGameObjectConvexHull(o);
-            Vector3 obbCenter = AxisAlignedBoundingBox.GetAxisAlignedBoundingCenter(data);
+            Vector3 obbCenter = AxisAlignedBoundingBox.GetAxisAlignedBoundingBoxTrsMatrix(data).GetPosition();
             // Compute Covariance Matrix With Outer Product
             Matrix4x4 cov = Matrix4x4.zero;
             int vertexCount = data.Position.Length;
@@ -30,17 +62,17 @@ namespace CommonTools.Bounding
                     "Assets/CommonTools/CommonBounding/ComputeWithOBB.compute");// Editor
             int kernel = cs.FindKernel("ComputeSVD3D");
 
-            GraphicsBuffer outputBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, Marshal.SizeOf(typeof(BoundUtility.BoundingBoxBuffer)));
+            GraphicsBuffer boundingBoxBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, Marshal.SizeOf(typeof(BoundUtility.BoundingBoxBuffer)));
             GraphicsBuffer positionBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, vertexCount, Marshal.SizeOf(typeof(BoundUtility.PositionBuffer)));
             BoundUtility.BoundingBoxBuffer[] outputs = new BoundUtility.BoundingBoxBuffer[1];
-            outputBuffer.SetData(outputs);
+            boundingBoxBuffer.SetData(outputs);
             positionBuffer.SetData(data.Position);
-            
+            // Dispatch Compute In CMD
             CommandBuffer cmd = new CommandBuffer();
             cmd.SetComputeVectorParam(cs, "_Center", obbCenter);
             cmd.SetComputeIntParam(cs, "_PointCount", vertexCount);
-            cmd.SetComputeBufferParam(cs, kernel, "_output_buffer", outputBuffer);
-            cmd.SetComputeBufferParam(cs, kernel, "_position_buffer", positionBuffer);
+            cmd.SetComputeBufferParam(cs, kernel, "_BoundingBoxBuffer", boundingBoxBuffer);
+            cmd.SetComputeBufferParam(cs, kernel, "_PositionBuffer", positionBuffer);
             // Split Matrix
             cmd.SetComputeVectorParam(cs, "_COV0", cov.GetColumn(0));
             cmd.SetComputeVectorParam(cs, "_COV1", cov.GetColumn(1));
@@ -49,7 +81,7 @@ namespace CommonTools.Bounding
             cmd.DispatchCompute(cs, kernel, 1, 1, 1);
             Graphics.ExecuteCommandBuffer(cmd);
             // Export
-            outputBuffer.GetData(outputs);
+            boundingBoxBuffer.GetData(outputs);
             Vector3[] corner = new Vector3[9];
             corner[0] = outputs[0].P0;
             corner[1] = outputs[0].P1;
@@ -59,11 +91,11 @@ namespace CommonTools.Bounding
             corner[5] = outputs[0].P5;
             corner[6] = outputs[0].P6;
             corner[7] = outputs[0].P7;
-            
+            // Center
             obbCenter = (corner[0] + corner[1] + corner[2] + corner[3] + corner[4] + corner[5] + corner[6] + corner[7]) / 8;
             corner[8] = obbCenter;
-
-            outputBuffer.Release(); 
+            
+            boundingBoxBuffer.Release(); 
             positionBuffer.Release();
             cmd.Clear();
             return corner;
