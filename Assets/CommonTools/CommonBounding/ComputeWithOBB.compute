@@ -109,8 +109,8 @@ void ComputeSVD3D(uint3 Id : SV_DispatchThreadID)
 	VectorU[0] = U[0];	VectorU[1] = U[1];	VectorU[2] = U[2];
 	
 	float3x3 Mat = CalculateTrs(LookAt(VectorU[1], VectorU[2]));
-	
-	float3x3 InverseMat = transpose(Mat);
+
+	const float3x3 InverseMat = transpose(Mat);
 	
 	float3 Min = float3(1.0e38, 1.0e38, 1.0e38);
 	float3 Max = float3(-1.0e38, -1.0e38, -1.0e38);

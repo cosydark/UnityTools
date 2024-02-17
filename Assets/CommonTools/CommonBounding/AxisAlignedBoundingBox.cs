@@ -63,6 +63,7 @@ namespace CommonTools.Bounding
         /// </summary>
         private static Vector3[] ComputeAABB(BoundUtility.PositionData data)
         {
+            data = BoundUtility.RegeneratePositionData(data);
             Vector3 min = new Vector3(data.PositionX.Min(), data.PositionY.Min(), data.PositionZ.Min());
             Vector3 max = new Vector3(data.PositionX.Max(), data.PositionY.Max(), data.PositionZ.Max());
         

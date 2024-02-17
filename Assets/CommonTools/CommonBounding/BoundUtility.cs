@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
 
@@ -10,6 +11,9 @@ namespace CommonTools.Bounding
     {
         public static PositionData GetGameObjectConvexHull(GameObject gameObject) => FetchConvexHullPointsFromGameObject(gameObject);
         public static PositionData GetGameObjectVertex(GameObject gameObject) => FetchVertexPositionFromGameObject(gameObject);
+        public static PositionData RegeneratePositionData(PositionData data) => FillPositionDataFromPosition(data);
+        public static GameObject CreatArtBlockBox(string name, Matrix4x4 trs) => CreatArtBlockFromTrsMatrix_Box(name, trs);
+        public static GameObject CreatArtBlockSphere(string name, Matrix4x4 trs) => CreatArtBlockFromTrsMatrix_Sphere(name, trs);
         
         #region PublicStruct
         
@@ -23,6 +27,7 @@ namespace CommonTools.Bounding
             public float[] PositionY;
             public float[] PositionZ;
         }
+        
         public struct PositionBuffer
         {
             public Vector3 VertexPosition;
@@ -39,6 +44,12 @@ namespace CommonTools.Bounding
             public Vector4 P7;
         }
         
+        
+        
+        #endregion
+        
+        #region PrivateFunction
+        
         // SkinnedMeshRenderer Is Invalid
         private static PositionData FetchConvexHullPointsFromGameObject(GameObject o)
         {
@@ -54,10 +65,49 @@ namespace CommonTools.Bounding
             return data;
         }
         
-        #endregion
+        private static GameObject CreatArtBlockFromTrsMatrix_Sphere(string name, Matrix4x4 trs)
+        {
+            if (!trs.ValidTRS()) { return null; }
+            GameObject artBlock = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            artBlock.name = $"{name} SBS";
+            artBlock.transform.position = trs.GetT();
+            artBlock.transform.localScale = trs.GetS();
+            return artBlock;
+        }
         
-        #region PrivateFunction
+        private static GameObject CreatArtBlockFromTrsMatrix_Box(string name, Matrix4x4 trs)
+        {
+            if (!trs.ValidTRS()) { return null; }
+            GameObject artBlock = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            Undo.RegisterCreatedObjectUndo(artBlock, "Create " + artBlock.name);
+            artBlock.name = $"{name} OBB";
+            artBlock.transform.position = trs.GetT();
+            artBlock.transform.rotation = trs.GetR();
+            artBlock.transform.localScale = trs.GetS();
+            return artBlock;
+        }
         
+        private static PositionData FillPositionDataFromPosition(PositionData data)
+        {
+            PositionData newData = new PositionData();
+            List<Vector3> newPosition = new List<Vector3>();
+            List<float> newPositionX = new List<float>();
+            List<float> newPositionY = new List<float>();
+            List<float> newPositionZ = new List<float>();
+            for (int i = 0; i < data.Position.Length; i++)
+            {
+                newPosition.Add(data.Position[i]);
+                newPositionX.Add(data.Position[i].x);
+                newPositionY.Add(data.Position[i].y);
+                newPositionZ.Add(data.Position[i].z);
+            }
+
+            newData.Position = newPosition.ToArray();
+            newData.PositionX = newPositionX.ToArray();
+            newData.PositionY = newPositionY.ToArray();
+            newData.PositionZ = newPositionZ.ToArray();
+            return newData;
+        }
         // SkinnedMeshRenderer Is Invalid
         private static PositionData FetchVertexPositionFromGameObject(GameObject o)
         {

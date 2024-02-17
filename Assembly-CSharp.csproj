@@ -68,6 +68,7 @@
      <Compile Include="Assets\CommonTools\ConvexHull\Algorithm\ConvexHull\ConvexHullAlgorithm.Initialize.cs" />
      <Compile Include="Assets\CommonTools\ConvexHull\Algorithm\ConvexHull\ConvexHullAlgorithm.MainLoop.cs" />
      <Compile Include="Assets\CommonTools\ConvexHull\Algorithm\Triangulation\VoronoiEdge.cs" />
+     <Compile Include="Assets\CommonTools\CommonBounding\SmallestBoundingSphere.cs" />
      <Compile Include="Assets\CommonTools\ConvexHull\Algorithm\IVertex.cs" />
      <Compile Include="Assets\CommonTools\ConvexHull\Algorithm\Triangulation\VoronoiMesh.cs" />
      <Folder Include="Assets" />

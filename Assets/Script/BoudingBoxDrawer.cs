@@ -95,6 +95,15 @@ public class BoudingBoxDrawer : MonoBehaviour
        artBlock.transform.rotation = trs.GetR();
        artBlock.transform.localScale = trs.GetS();
    }
+   
+   [Button("Setup Smallest Sphere ArtBlock", ButtonSizes.Medium)]
+   private void SetupSSArtBlock()
+   {
+       Matrix4x4 trs = CommonTools.Bounding.SmallestBoundingSphere.GetSmallestSphere(BoundUtility.GetGameObjectVertex(this.gameObject).Position);
+       GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+       sphere.transform.position = trs.GetT();
+       sphere.transform.localScale = trs.GetS();
+   }
     private void Update()
     {
         if (Type == DrawType.Line)
